@@ -404,6 +404,37 @@ class VNF:
         if action == 'function_log':
             return self.VNF_REST.getLog()
 
+#scriptVNF: execute a script serialized in a dictionary in scriptTasks, scriptError is
+#           another serial tasks set as a error handle (can be None), finally, functionPath is for
+#           replace actions, it can be None.
+#            []     = seccessfull execution, REST results is presented
+#           -1      = VNF is no up, up to control it
+#           -2      = management not acessible by ARP
+#           -3 ~ -8 = analog to REST.scriptExecution + 2 result
+    def scriptVNF(self, scriptTasks, scriptError, functionPath):
+
+        if self.VNF_STATUS < 0:
+            return
+
+        if not self.VNF_UP:
+            return -1
+
+        if self.VNF_REST == None:
+            management = self.managementVNF()
+            if isinstance(management, basestring):
+                self.VNF_REST = REST(management)
+            else:
+                return -2
+
+        resultCheck = self.VNF_REST.scriptExecution(scriptTasks, scriptError, functionPath)
+        if isinstance(resultCheck, list):
+            return resultCheck
+        else:
+            if resultCheck < 0:
+                return resultCheck - 2
+            else:
+                return resultCheck
+
 """
 #Simple CLI interface to test the library, if not necessay comment it.
 def help():

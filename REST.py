@@ -1,6 +1,7 @@
 from requests import get
 from requests import post
 from os import path
+from json import loads
 
 class REST:
 
@@ -109,3 +110,153 @@ class REST:
 
         response = post(self.VNF_ADDRESS + '/click_plugin/write_file?path=func.click&content=' + functionData)
         return response.status_code
+
+# scriptError: trigger for a non 200 rest return.
+#              -2 = replace file not found
+#              -1 = script error routine executed with errors
+#               0 = script error routine sucessfully executed
+    def scriptError(self, scriptError, functionPath):
+
+        for task in range(0, len(scriptError)):
+            if scriptError[str(task + 1)] == 'start':
+                resultCheck = self.postStart()
+                if resultCheck != 200:
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'stop':
+                resultCheck = self.postStop()
+                if resultCheck != 200:
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'replace':
+                if functionPath == None:
+                    return -2
+                resultCheck = self.postFunction(functionPath)
+                if resultCheck != 200:
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'running':
+                resultCheck = self.getRunning()
+                if resultCheck[0] != '200':
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'data':
+                resultCheck = self.getFunction()
+                if resultCheck[0] != '200':
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'id':
+                resultCheck = self.getIdentification()
+                if resultCheck[0] != '200':
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'metrics':
+                resultCheck = self.getMetrics()
+                if resultCheck[0] != '200':
+                    return -1
+                continue
+            if scriptError[str(task + 1)] == 'log':
+                resultCheck = self.getLog()
+                if resultCheck[0] != '200':
+                    return -1
+                continue
+        return 0
+
+#scriptExecution: execute defined tasks in a json script file.
+#                 -6 = analog to -2 return from scriptError
+#                 -5 = analog to -1 return from scriptError
+#                 -4 = analog to 0 return from scriptError
+#                 -3 = unhandled error
+#                 -2 = required task not defined
+#                 -1 = replace file not found
+#                 [] = REST calls returns, status code and get actions response
+    def scriptExecution(self, scriptTasks, scriptError, functionPath):
+
+        tasksResults = []
+        for task in range(0, len(scriptTasks)):
+            if scriptTasks[str(task + 1)] == 'start':
+                resultCheck = self.postStart()
+                resultCheck = 404
+                if resultCheck != 200:
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'stop':
+                resultCheck = self.postStop()
+                if resultCheck != 200:
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'replace':
+                if functionPath == None:
+                    return -1
+                resultCheck = self.postFunction(functionPath)
+                if resultCheck != 200:
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'running':
+                resultCheck = self.getRunning()
+                if resultCheck[0] != '200':
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'data':
+                resultCheck = self.getFunction()
+                if resultCheck[0] != '200':
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'id':
+                resultCheck = self.getIdentification()
+                if resultCheck[0] != '200':
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'metrics':
+                resultCheck = self.getMetrics()
+                if resultCheck[0] != '200':
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            if scriptTasks[str(task + 1)] == 'log':
+                resultCheck = self.getLog()
+                if resultCheck[0] != '200':
+                    if scriptError != None:
+                        return self.scriptError(scriptError, functionPath) - 4
+                    else:
+                        return -3
+                tasksResults.append(resultCheck)
+                continue
+
+            return -2
+
+        return tasksResults

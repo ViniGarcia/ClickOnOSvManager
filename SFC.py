@@ -361,58 +361,10 @@ class SFC:
 
         return addressVNF
 
-    #defaultScriptError: trigger for a non 200 rest return.
-    #                    -2 = replace file not found
-    #                    -1 = sfcerror task not defined
-    #                     0 = script routine sucessfully executed
-    def defaultScriptError(self, scriptJSON):
-
-        for actions in scriptJSON:
-            for VNF in self.SFC_VNF_INSTANCES:
-                if VNF.ID in actions:
-                    if not 'sfcerror' in actions[VNF.ID]:
-                        return -1
-                    for task in range(0, len(actions[VNF.ID]['sfcerror'])):
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'start':
-                            VNF.controlVNF('function_start', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'stop':
-                            VNF.controlVNF('function_stop', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'replace':
-                            if 'path' in actions[VNF.ID] and 'function' in actions[VNF.ID]:
-                                functionPath = actions[VNF.ID]['path'] + actions[VNF.ID]['function']
-                            else:
-                                return -2
-                            VNF.controlVNF('function_replace', [functionPath])
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'running':
-                            VNF.controlVNF('function_run', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'data':
-                            VNF.controlVNF('function_data', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'id':
-                            VNF.controlVNF('function_id', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'metrics':
-                            VNF.controlVNF('function_metrics', None)
-                            continue
-                        if actions[VNF.ID]['sfcerror'][str(task + 1)] == 'log':
-                            VNF.controlVNF('function_log', None)
-                            continue
-
-        return 0
-
-    #scriptSFC: execute defined tasks in a json script file.
-    #           -7 = analog to -2 return from defaultScriptError
-    #           -6 = analog to -1 return from defaultScriptError
-    #           -5 = analog to 0 return from defaultScriptError
-    #           -4 = required task not defined
-    #           -3 = replace file not found
-    #           -2 = script task not defined
-    #           -1 = script file not found
-    #           [] = REST calls returns, status code and get actions response
+#scriptSFC: execute tasks sets for VNFs present in a JSON file.
+#           -1      = script file does not exists
+#           -2 ~ -9 = analog to VNF.scriptVNF + 1 result
+#           []      = seccess execution, REST answers returns
     def scriptSFC(self, scriptPath, scriptTask):
 
         if not path.isfile(scriptPath):
@@ -423,79 +375,29 @@ class SFC:
 
         actionsResult = []
         for actions in scriptJSON:
-            for VNF in self.SFC_VNF_INSTANCES:
-                if VNF.ID in actions:
-                    if not scriptTask in actions[VNF.ID]:
-                        return -2
+            for INSTANCE in self.SFC_VNF_INSTANCES:
 
-                    tasksResults = []
-                    for task in range(0, len(actions[VNF.ID][scriptTask])):
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'start':
-                            resultCheck = VNF.controlVNF('function_start', None)
-                            if resultCheck != 200:
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
+                if INSTANCE.ID in actions:
+                    if not scriptTask in actions[INSTANCE.ID]:
+                        continue
 
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'stop':
-                            resultCheck = VNF.controlVNF('function_stop', None)
-                            if resultCheck != 200:
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
+                    if 'path' in actions[INSTANCE.ID] and 'function' in actions[INSTANCE.ID]:
+                        functionPath = actions[INSTANCE.ID]['path'] + actions[INSTANCE.ID]['function']
+                    else:
+                        functionPath = None
 
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'replace':
-                            if 'path' in actions[VNF.ID] and 'function' in actions[VNF.ID]:
-                                functionPath = actions[VNF.ID]['path'] + actions[VNF.ID]['function']
-                            else:
-                                return -3
-                            resultCheck = VNF.controlVNF('function_replace', [functionPath])
-                            if resultCheck != 200:
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
+                    if 'error' in actions[INSTANCE.ID]:
+                        resultCheck = INSTANCE.scriptVNF(actions[INSTANCE.ID][scriptTask], actions[INSTANCE.ID]['error'], functionPath)
+                    else:
+                        resultCheck = INSTANCE.scriptVNF(actions[INSTANCE.ID][scriptTask], None, functionPath)
 
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'running':
-                            resultCheck = VNF.controlVNF('function_run', None)
-                            if resultCheck[0] != '200':
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
-
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'data':
-                            resultCheck = VNF.controlVNF('function_data', None)
-                            if resultCheck[0] != '200':
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
-
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'id':
-                            resultCheck = VNF.controlVNF('function_id', None)
-                            if resultCheck[0] != '200':
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
-
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'metrics':
-                            resultCheck = VNF.controlVNF('function_metrics', None)
-                            if resultCheck[0] != '200':
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
-
-                        if actions[VNF.ID][scriptTask][str(task + 1)] == 'log':
-                            resultCheck = VNF.controlVNF('function_log', None)
-                            if resultCheck[0] != '200':
-                                return self.defaultScriptError(scriptJSON) - 5
-                            tasksResults.append(resultCheck)
-                            continue
-
-                        return -4
-
-                    actionsResult.append(tasksResults)
+                    if isinstance(resultCheck, list):
+                        resultCheck.insert(0, INSTANCE.ID)
+                        actionsResult.append(resultCheck)
+                    else:
+                        return resultCheck - 1
 
         return actionsResult
-
 
 #Simple CLI interface to test the library, if not necessay comment it.
 def help():

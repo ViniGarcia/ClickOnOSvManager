@@ -17,7 +17,7 @@
 			"1":"stop",
 			"2":"running"
 		},
-		"sfcerror":{
+		"error":{
 			"1":"stop",
 			"2":"log"
 		}
@@ -42,7 +42,7 @@
 			"1":"stop",
 			"2":"running"
 		},
-		"sfcerror":{
+		"error":{
 			"1":"stop",
 			"2":"log"
 		}
@@ -67,7 +67,7 @@
 			"1":"stop",
 			"2":"running"
 		},
-		"sfcerror":{
+		"error":{
 			"1":"stop",
 			"2":"log"
 		}
